@@ -17,12 +17,40 @@
 # limitations under the License.
 ################################################################################
 
-# This script only suit for Flink-1.10 and above.
+# This script only suit for Flink-1.10.
+# Usage: calculator.sh [-h]
+#        -h human readable mode
 
 bin=`dirname "$0"`
 bin=`cd "$bin"; pwd`
 
 . "$bin"/config.sh
+
+if [ "$1" == "-h" ]; then
+    HUMAN_READABLE="human"
+    echo "There may be precision loss in human readable mode."
+fi
+
+translate_to_human_readable() {
+    origin_param=$1
+    if [ $(echo $origin_param | grep -c 'taskmanager.cpu.cores') != "0" ]; then
+        echo $origin_param
+    else
+        size=$(echo $origin_param |grep -o '[0-9]\+')
+        if (( size < 1024 )); then
+            echo $origin_param | sed 's/b$//g' | sed 's/$/b/g'
+        elif (( size < 1048576 )); then
+            size_in_kb=$(( $size / 1024 ))
+            echo $origin_param | sed "s/$size/$size_in_kb/g" | sed 's/b$//g' | sed 's/$/kb/g'
+        elif (( size < 1073741824 )); then
+            size_in_mb=$(( $size / 1048576 ))
+            echo $origin_param | sed "s/$size/$size_in_mb/g" | sed 's/b$//g' | sed 's/$/mb/g'
+        else
+            size_in_gb=$(( $size / 1073741824 ))
+            echo $origin_param | sed "s/$size/$size_in_gb/g" | sed 's/b$//g' | sed 's/$/g/g'
+        fi
+    fi
+}
 
 jvm_params_output=`runBashJavaUtilsCmd GET_TM_RESOURCE_JVM_PARAMS ${FLINK_CONF_DIR}`
 jvm_params=`extractExecutionParams "$jvm_params_output"`
@@ -34,7 +62,12 @@ fi
 echo "JVM Parameters:"
 for param in $(echo "$jvm_params" | tr " " "\n")
 do
-    echo "    $param"
+    if [ -z $HUMAN_READABLE ]; then
+        echo "    $param"
+    else
+        human_readable_param=$(translate_to_human_readable $param)
+        echo "    $human_readable_param"
+    fi
 done
 
 echo ""
@@ -50,5 +83,11 @@ dynamic_configs=$(echo $dynamic_configs | sed 's/-D //g')
 echo "TaskManager Dynamic Configs:"
 for config in $(echo "$dynamic_configs" | tr " " "\n")
 do
-    echo "    $config"
+    if [ -z $HUMAN_READABLE ]; then
+        echo "    $config"
+    else
+        human_readable_config=$(translate_to_human_readable $config)
+        echo "    $human_readable_config"
+    fi
 done
+
