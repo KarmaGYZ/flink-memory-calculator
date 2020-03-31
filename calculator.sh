@@ -18,7 +18,7 @@
 ################################################################################
 
 # This script only suit for Flink-1.10.
-# Usage: calculator.sh [-h]
+# Usage: calculator.sh [-h] [-D args]
 #        -h human readable mode
 
 bin=`dirname "$0"`
@@ -28,8 +28,29 @@ bin=`cd "$bin"; pwd`
 
 if [ "$1" == "-h" ]; then
     HUMAN_READABLE="human"
+    shift
     echo "There may be precision loss in human readable mode."
 fi
+
+ARGS="${@:1}"
+
+runBashJavaUtilsCmd() {
+    local cmd=$1
+    local conf_dir=$2
+    local class_path="${3:-$FLINK_BIN_DIR/bash-java-utils.jar:`findFlinkDistJar`}"
+    class_path=`manglePathList ${class_path}`
+    local args="$4"
+
+    local output=`${JAVA_RUN} -classpath ${class_path} org.apache.flink.runtime.util.BashJavaUtils ${cmd} --configDir ${conf_dir} $args 2>&1 | tail -n 1000`
+    if [[ $? -ne 0 ]]; then
+        echo "[ERROR] Cannot run BashJavaUtils to execute command ${cmd}." 1>&2
+        # Print the output in case the user redirect the log to console.
+        echo "$output" 1>&2
+        exit 1
+    fi
+
+    echo "$output"
+}
 
 translate_to_human_readable() {
     origin_param=$1
@@ -52,7 +73,7 @@ translate_to_human_readable() {
     fi
 }
 
-jvm_params_output=`runBashJavaUtilsCmd GET_TM_RESOURCE_JVM_PARAMS ${FLINK_CONF_DIR}`
+jvm_params_output=$(runBashJavaUtilsCmd GET_TM_RESOURCE_JVM_PARAMS ${FLINK_CONF_DIR} $FLINK_BIN_DIR/bash-java-utils.jar:$(findFlinkDistJar) "$ARGS")
 jvm_params=`extractExecutionParams "$jvm_params_output"`
 if [[ $? -ne 0 ]]; then
     echo "[ERROR] Could not get JVM parameters properly."
@@ -72,7 +93,7 @@ done
 
 echo ""
 
-dynamic_configs_output=`runBashJavaUtilsCmd GET_TM_RESOURCE_DYNAMIC_CONFIGS ${FLINK_CONF_DIR}`
+dynamic_configs_output=$(runBashJavaUtilsCmd GET_TM_RESOURCE_DYNAMIC_CONFIGS ${FLINK_CONF_DIR} $FLINK_BIN_DIR/bash-java-utils.jar:$(findFlinkDistJar) "$ARGS")
 dynamic_configs=`extractExecutionParams "$dynamic_configs_output"`
 if [[ $? -ne 0 ]]; then
     echo "[ERROR] Could not get dynamic configurations properly."

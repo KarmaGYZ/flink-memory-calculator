@@ -2,7 +2,9 @@
 A third party tool to simulate the calculation result of Flink's memory configuration. Only valid for Flink-1.10.
 
 Usage:
-Add the `calculator.sh` to the `FLINK_DIST/bin`. You should set all configurations in your `FLINK_CONF_DIR` and then execute `bin/calculator.sh`.
+Add the `calculator.sh` to the `FLINK_DIST/bin`. You should set all configurations in your `FLINK_CONF_DIR` and then execute `bin/calculator.sh`. You could also append dynamic config options to it.
+
+If you want to use "-tm", please repalce it with "-Dtaskmanager.memory.process.size=". This config would be deprecated eventually.
 
 If successed, the result format should be:
 
