@@ -56,7 +56,7 @@ translate_to_human_readable() {
 }
 
 java_utils_output=$(runBashJavaUtilsCmd GET_TM_RESOURCE_PARAMS "${FLINK_CONF_DIR}" "$FLINK_BIN_DIR/bash-java-utils.jar:$(findFlinkDistJar)" "${ARGS[@]}")
-logging_output=$(extractLoggingOutputs "${java_utils_output}")
+logging_output=$(extractLoggingOutputs "${java_utils_output}" | grep -v "Loading configuration property")
 params_output=$(extractExecutionResults "${java_utils_output}" 2)
 
 if [[ $? -ne 0 ]]; then
@@ -94,3 +94,5 @@ do
     fi
 done
 
+echo ""
+echo "$logging_output"
